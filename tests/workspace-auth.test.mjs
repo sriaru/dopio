@@ -1,0 +1,60 @@
+import { PGlite } from '@electric-sql/pglite';
+import { readFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+const migration = await readFile(new URL('../supabase/migrations/202609260001_workspace_auth.sql',import.meta.url),'utf8');
+const alice='11111111-1111-4111-8111-111111111111';
+const bob='22222222-2222-4222-8222-222222222222';
+
+test('workspace migration: idempotent onboarding, scoped access, and legacy isolation',async()=>{
+ const db=new PGlite();
+ try {
+ await db.exec(`create role anon;create role authenticated;create schema auth;
+ create table auth.users(id uuid primary key);
+ create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+ grant usage on schema auth to public;
+ insert into auth.users(id) values('${alice}'),('${bob}');
+ create table public.artists(id uuid primary key default gen_random_uuid(),name text not null,genre text,status text default 'Active',created_at timestamptz default now());
+ insert into public.artists(name) values('Legacy artist');
+ alter table public.artists enable row level security;
+ create policy legacy_open_policy on public.artists for all using(true) with check(true);`);
+ await db.exec(migration);
+ async function asUser(id){await db.exec(`reset role;select set_config('request.jwt.claim.sub','${id}',false);set role authenticated;`);}
+ const save=async(name,complete=false)=> (await db.query(`select public.save_workspace_onboarding($1,'Artist Manager','Test Company','3–5',$2,$3) as id`,[name,name+' workspace',complete])).rows[0].id;
+ await asUser(alice);
+ const aliceWorkspace=await save('Alice');
+ assert.equal((await db.query('select onboarding_completed_at from profiles')).rows[0].onboarding_completed_at,null);
+ assert.equal(await save('Alice',true),aliceWorkspace,'retry must not create another workspace');
+ assert.equal((await db.query('select count(*)::int as count from workspaces')).rows[0].count,1);
+ assert.ok((await db.query('select onboarding_completed_at from profiles')).rows[0].onboarding_completed_at);
+ await save('Alice',false);
+ assert.ok((await db.query('select onboarding_completed_at from profiles')).rows[0].onboarding_completed_at,'progress cannot be reset by a stale request');
+ await db.query('insert into artists(name,workspace_id) values($1,$2)',['Alice artist',aliceWorkspace]);
+ assert.deepEqual((await db.query('select name from artists')).rows.map(x=>x.name),['Alice artist'],'unassigned legacy artist must remain hidden despite older permissive policy');
+ await asUser(bob);
+ assert.equal((await db.query('select * from profiles')).rows.length,0);
+ assert.equal((await db.query('select * from workspaces')).rows.length,0);
+ assert.equal((await db.query('select * from workspace_members')).rows.length,0);
+ assert.equal((await db.query('select * from artists')).rows.length,0);
+ const bobWorkspace=await save('Bob',true);
+ assert.notEqual(bobWorkspace,aliceWorkspace);
+ await assert.rejects(()=>db.query('insert into artists(name,workspace_id) values($1,$2)',['Cross-tenant attack',aliceWorkspace]),/row-level security/);
+ await assert.rejects(()=>db.query('insert into artists(name) values($1)',['Missing scope']),/row-level security/);
+ await assert.rejects(()=>db.query('insert into workspace_members(workspace_id,user_id) values($1,$2)',[aliceWorkspace,bob]),/permission denied/);
+ await assert.rejects(()=>db.query('update workspaces set owner_id=$1 where id=$2',[bob,aliceWorkspace]),/permission denied/);
+ await assert.rejects(()=>db.query('update profiles set onboarding_completed_at=null'),/permission denied/);
+ const update=await db.query('update profiles set full_name=$1 where id=$2 returning id',['Impersonation',alice]);
+ assert.equal(update.rows.length,0);
+ await db.query('insert into artists(name,workspace_id) values($1,$2)',['Bob artist',bobWorkspace]);
+ await db.query('update profiles set full_name=$1 where id=$2',['Bob Updated',bob]);
+ assert.equal((await db.query('select full_name from profiles')).rows[0].full_name,'Bob Updated');
+ await assert.rejects(()=>save(''),/Invalid onboarding details/);
+ await db.exec("reset role;select set_config('request.jwt.claim.sub','',false);set role authenticated;");
+ await assert.rejects(()=>save('No identity'),/Authentication required/);
+ await db.exec('reset role;set role anon;');
+ await assert.rejects(()=>db.query('select * from artists'),/permission denied/);
+ await assert.rejects(()=>save('Anonymous'),/permission denied/);
+ await db.exec('reset role;');
+ assert.equal((await db.query("select count(*)::int as count from artists where name='Legacy artist'")).rows[0].count,1,'migration preserves existing records');
+ } finally {await db.close();}
+});

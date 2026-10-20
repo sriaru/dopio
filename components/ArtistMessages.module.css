@@ -1,0 +1,81 @@
+.layout{display:grid;grid-template-columns:280px minmax(0,1fr);border:1px solid #e7e5ee;border-radius:18px;background:white;overflow:hidden;min-height:620px;box-shadow:0 6px 24px #24203604}
+.teams{padding:22px 14px;background:#fcfbfe;border-right:1px solid #ece9f2;min-width:0}
+.listHeading{display:flex;align-items:center;justify-content:space-between;padding:0 8px 18px;gap:8px}.listHeading h2{font-size:15px;margin:0}.listHeading span{color: var(--text-secondary);font-size:12px;margin-left:6px}
+.search{width:100%;padding:10px 12px;border:1px solid #e7e3ef;border-radius:9px;background:white;margin-bottom:16px;font:inherit;font-size:13px}
+.team{display:flex;gap:12px;align-items:center;padding:13px 10px;text-decoration:none;color: var(--text-secondary);border-radius:10px;margin:4px 0}.team:hover{background:#f3f0fa}.selected{background:#eee9fb;color: var(--accent)}.team strong{display:block;font-size:14px}.team small{display:block;font-size:12px;color: var(--text-secondary);margin-top:4px}
+.avatar{width:38px;height:38px;border-radius:12px;background:#ece7f7;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:600;color: var(--accent)}
+.listFoot{font-size:12px!important;line-height:1.6;color: var(--text-secondary);margin:24px 10px 0}.conversation{min-width:0;display:flex;flex-direction:column}.heading{display:flex;gap:12px;align-items:center;padding:22px 26px;border-bottom:1px solid #eeebf3}.heading h2{font-size:18px;margin:0}.heading p{font-size:12px;color: var(--text-secondary);margin:4px 0 0}.heading>a{margin-left:auto}
+.empty{display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;padding:50px 28px;text-align:center;color: var(--text-secondary)}.empty h2{font-size:20px;color: var(--text-primary)}.emptyIcon{font-size:30px;color: var(--accent);background:#f3eefb;padding:15px 22px;border-radius:20px}
+.thread{display:flex;flex-direction:column;min-height:500px}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 26px;border-bottom:1px solid #f0edf4;color: var(--text-secondary);font-size:12px}.toolbar details{position:relative}.toolbar summary{cursor:pointer;white-space:nowrap}.settings{position:absolute;right:0;top:30px;width:280px;background:white;padding:20px;border:1px solid #e7e3ef;border-radius:12px;box-shadow:0 10px 30px #25203616;z-index:2}.settings label{display:grid;gap:8px;margin:12px 0}.settings select{padding:8px;border:1px solid #e7e3ef;border-radius:6px;max-width:100%}.settings p{line-height:1.6;font-size:12px}.status{display:flex;gap:6px;align-items:center}.status span{width:6px;height:6px;background:#66ad91;border-radius:50%}
+.history{padding:24px 26px;min-height:300px;max-height:470px;overflow:auto;flex:1}.message{display:flex;gap:12px;margin:0 0 22px}.messageContent{min-width:0;flex:1}.messageHeader{display:flex;align-items:baseline;gap:10px}.messageHeader strong{font-size:13px;color: var(--text-primary)}.messageHeader small{font-size: 12px;color: var(--text-secondary)}.bubble{display:inline-block;background:#f6f4fa;border-radius:0 12px 12px;padding:12px 16px;margin-top:8px;max-width:100%;font-size:14px;line-height:1.65;color: var(--text-primary);white-space:pre-wrap;overflow-wrap:anywhere}.event{background:#faf9fc;border:1px solid #ece8f4;border-radius:10px;padding:14px 16px;margin-top:8px;font-size:13px;line-height:1.7}.event a{display:block;color: var(--accent);margin-top:6px}.mentions{font-size:12px;color: var(--accent)}
+.composer{padding:18px 26px 22px;border-top:1px solid #eeebf3;background:white}.composer textarea{display:block;width:100%;resize:vertical;min-height:80px;max-height:200px;padding:14px 16px;border:1px solid #e5e0ee;border-radius:12px;font:inherit;font-size:14px;outline-color:#9677de}.composeActions{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:12px}.composeActions details{font-size:12px;color: var(--text-secondary)}.composeActions label{display:block;padding:5px}.composeActions input{width:auto;margin-right:7px}.composeActions button{border-radius:9px;padding:10px 22px}.threadError{margin:12px 26px}.readOnly{padding:16px 26px;color: var(--text-secondary)}
+@media(max-width:850px){.layout{grid-template-columns:210px minmax(0,1fr)}.heading,.toolbar,.composer,.history{padding-left:16px;padding-right:16px}.heading>a{font-size:12px}.toolbar{flex-wrap:wrap}}@media(max-width:600px){.layout{grid-template-columns:1fr}.teams{border-right:0;border-bottom:1px solid #ece9f2}.teams nav{display:flex;overflow:auto;gap:8px}.team{min-width:150px}.listFoot{display:none}.history{max-height:400px}.settings{right:0}}
+.unread{background:#f1eaff;border-left:3px solid #8059da}.unread strong,.unread .preview{font-weight:700;color: var(--text-primary)}.preview{max-width:165px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.unreadBadge{display:inline-flex;background:#7650d5;color: var(--text-inverse);border-radius:12px;padding:2px 8px;font-size:12px;margin-top:5px}.aiTools{padding:12px 26px;border-bottom:1px solid #eee8f5}.aiTools>small{font-size: 12px;color: var(--text-secondary)}.aiPanel{margin-top:12px;padding:18px;background:#faf7ff;border:1px solid #e6dcf7;border-radius:12px}.aiPanel blockquote{white-space:pre-wrap;border-left:3px solid #b9a2e9;padding-left:12px;margin-left:0;font-size:13px}.aiPanel label{display:grid;gap:6px;margin:12px 0}.aiPanel input,.aiPanel select{padding:10px;border:1px solid #ddd4eb;border-radius:8px;background:var(--card-bg,white);color:inherit}.aiPanel p{font-size:13px;line-height:1.6}
+
+.messenger{min-height:calc(100vh - 160px);border-radius:15px;grid-template-columns:270px minmax(0,1fr)}
+.withDetails{grid-template-columns:260px minmax(340px,1fr) 270px}
+.messenger .teams{background:#fdfcff;padding:24px 14px}
+.messenger .listHeading h1{font-size:25px;margin:0;letter-spacing:-.03em}
+.filters{display:flex;gap:10px;margin:0 8px 20px}
+.filters button{border:0;background:transparent;padding:10px 16px;font-size:12px;color: var(--text-secondary);border-radius:8px}
+.filters .activeFilter{background:#efe7ff;color: var(--accent);font-weight:600}
+.messenger .search{padding:14px;border-radius:10px;background:#faf9fd}
+.messenger .team{padding:18px 10px;border-radius:12px}
+.messenger .team>.avatar{width:44px;height:48px;border-radius:9px;background:linear-gradient(135deg,#e6def5,#d8e1f4)}
+.messenger .team>span:last-child{min-width:0}
+.messenger .heading{padding:24px;gap:16px}
+.messenger .heading>button{margin-left:auto;font-size:12px}
+.conversationNav{display:flex;gap:24px;border-bottom:1px solid #eeeaf5;padding:0 24px;align-items:center;flex-wrap:wrap}
+.conversationNav a,.conversationNav span{font-size:12px;padding:15px 0;text-decoration:none;color: var(--accent)}
+.conversationNav span{border-bottom:2px solid #9867e6;color: var(--text-secondary);font-weight:600}
+.messenger .toolbar{font-size: 12px;padding:12px 24px}
+.messenger .history{max-height:560px;min-height:360px;padding:28px 24px}
+.messenger .bubble{background:transparent;padding:6px 0;border-radius:0;margin-top:0;font-size:14px;color: var(--text-primary)}
+.messenger .message{margin-bottom:26px}
+.messenger .messageHeader strong{font-size:14px}
+.messenger .event{background:#fdfbff;border:1px solid #ede7f7;border-radius:12px}
+.messenger .composer{border:1px solid #e9e3f1;border-radius:16px;margin:14px 20px 20px;padding:14px;background:#fefcff}
+.messenger .composer textarea{border:0;background:transparent;padding:8px;min-height:60px}
+.messenger .composeActions button{font-size:12px;padding:10px 16px}
+.detailsPanel{border-left:1px solid #eeeaf4;padding:26px 22px;min-width:0;background:#fefeff}
+.detailsPanel header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.detailsPanel h2{font-size:18px;margin:0}
+.detailsPanel h3{font-size:13px;margin:0 0 16px}
+.detailsPanel section{border-top:1px solid #f0edf6;margin-top:26px;padding-top:22px}
+.detailsPanel section header a{font-size: 12px;text-decoration:none;color: var(--accent);margin-bottom:16px}
+.detailsArtist{display:flex;align-items:center;gap:14px;margin:24px 0}
+.detailsArtist>.avatar{width:58px;height:64px;border-radius:10px;font-size:18px}
+.detailsArtist strong{font-size:14px}
+.detailsArtist p{font-size:12px;color: var(--text-secondary);margin-top:6px}
+.detailsPanel>.button{font-size: 12px;width:100%;padding:12px}
+.detailsPanel dl>div{display:flex;justify-content:space-between;gap:12px;font-size:12px;margin:17px 0}
+.detailsPanel dt{color: var(--text-secondary)}.detailsPanel dd{margin:0;color: var(--text-secondary);text-align:right}
+.member{display:flex;align-items:center;gap:12px;margin:16px 0;font-size:12px;color: var(--text-primary)}
+.member>.avatar{width:32px;height:32px;border-radius:50%;font-size: 12px}
+.resource{display:block;font-size:12px;text-decoration:none;color: var(--text-primary);padding:10px 0}
+.resource small{display:block;color: var(--text-primary);margin-top:5px}
+@media(max-width:1250px){.withDetails{grid-template-columns:220px minmax(300px,1fr)}.detailsPanel{grid-column:1/-1;border-left:0;border-top:1px solid #eeeaf4;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.detailsPanel>header{grid-column:1/-1}.detailsPanel section{margin-top:0}}
+@media(max-width:750px){.messenger,.withDetails{grid-template-columns:1fr}.messenger .teams{border-right:0;border-bottom:1px solid #eeeaf4}.messenger .teams nav{max-height:230px;overflow:auto}.detailsPanel{display:block}.detailsPanel section{margin-top:20px}.conversationNav{gap:18px}.messenger .history{padding:20px 16px}.messenger .composer{margin:12px}}
+
+/* Messenger uses the same semantic roles as the rest of the workspace. */
+.messenger { color:var(--text-primary); }
+.team, .team strong, .unread strong, .unread .preview,
+.messageHeader strong, .messenger .bubble, .event, .detailsArtist strong,
+.detailsPanel dd, .member { color:var(--text-primary); }
+.messageHeader strong { font-weight:650; }
+.team strong { font-weight:600; }
+.unread strong, .unread .preview { font-weight:700; }
+.team small, .messageHeader small, .detailsArtist p, .detailsPanel dt,
+.resource small, .listFoot, .toolbar, .heading p { color:var(--text-secondary); }
+.messageHeader small { font-size:12px; }
+.messenger .bubble { font-size:15px; line-height:1.65; }
+.messenger .teams, .messenger .composer, .detailsPanel { background:var(--surface); }
+.messenger .event, .aiPanel { background:var(--surface-subtle); }
+.team:hover { background:var(--surface-subtle); }
+.team.selected, .unread { background:var(--accent-soft); }
+.resource, .event a, .mentions, .filters .activeFilter,
+.conversationNav span { color:var(--accent); }
+.conversationNav a { color:var(--text-secondary); }
+.conversationNav a:hover { color:var(--accent); }
+.composer textarea, .search, .settings label { color:var(--text-primary); }
+.composer textarea:focus-visible { outline:2px solid var(--focus-ring); outline-offset:2px; }

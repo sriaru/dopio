@@ -1,0 +1,56 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile,readdir} from 'node:fs/promises';
+import {randomUUID as uuid} from 'node:crypto';
+import {PGlite} from '@electric-sql/pglite';
+test('artist conversations enforce assignments, mentions, idempotency, unread settings and transactional date updates',async()=>{
+ const db=new PGlite();try{
+ const owner=uuid(),alex=uuid(),other=uuid(),viewer=uuid();
+ await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth to public;`);
+ for(const id of [owner,alex,other,viewer])await db.query('insert into auth.users values($1)',[id]);
+ for(const f of (await readdir('supabase/migrations')).filter(f=>f.endsWith('.sql')).sort())await db.exec(await readFile('supabase/migrations/'+f,'utf8'));
+ const as=async(id)=>db.exec(`reset role;select set_config('request.jwt.claim.sub','${id}',false);set role authenticated;`);
+ await as(owner);const w=(await db.query("select save_workspace_onboarding('Owner','Artist Manager','','1–2','Company',true) id")).rows[0].id;
+ const artist=(await db.query("insert into artists(workspace_id,name) values($1,'Daniel') returning record_id",[w])).rows[0].record_id;
+ await db.exec('reset role');for(const [id,role] of [[alex,'manager'],[other,'manager'],[viewer,'viewer']])await db.query('insert into workspace_members(workspace_id,user_id,role) values($1,$2,$3)',[w,id,role]);
+ await as(owner);await db.query('select assign_artist_access($1,$2,$3,true)',[w,artist,alex]);await db.query('select assign_artist_access($1,$2,$3,true)',[w,artist,viewer]);
+ const feed=async()=>(await db.query('select artist_conversation($1,$2) f',[w,artist])).rows[0].f;
+ const post=(request=uuid(),mentions=[alex],body='Artwork is ready')=>db.query('select post_artist_update($1,$2,$3,$4,$5) id',[w,artist,request,body,mentions]);
+ // Owner access does not require artist_access rows, including another manager's team.
+ const second=(await db.query("insert into artists(workspace_id,name) values($1,'Alex team artist') returning record_id",[w])).rows[0].record_id;
+ await db.query('select assign_artist_access($1,$2,$3,true)',[w,second,alex]);
+ assert.equal((await db.query('select * from artist_access where artist_id=$1 and user_id=$2',[second,owner])).rows.length,0);
+ assert.equal((await db.query('select record_id from artists where workspace_id=$1',[w])).rows.length,2);
+ assert.ok((await db.query('select artist_conversation($1,$2) f',[w,second])).rows[0].f);
+ const request=uuid(),first=(await post(request)).rows[0].id;assert.equal((await post(request)).rows[0].id,first);await assert.rejects(post(request,[alex],'Different message'));
+ await assert.rejects(post(uuid(),[other]));assert.equal((await feed()).updates.length,1);
+ await as(alex);assert.equal((await feed()).unread,1);assert.equal((await feed()).team.length,3);
+ await db.query("select set_artist_update_preferences($1,$2,$3,'mentions')",[w,artist,first]);assert.equal((await feed()).unread,0);
+ await as(owner);await post(uuid(),[]);await as(alex);assert.equal((await feed()).unread,0);
+ await as(viewer);assert.equal((await feed()).can_post,false);await assert.rejects(post());
+ await as(other);await assert.rejects(feed());assert.equal((await db.query('select * from artist_updates')).rows.length,0);
+ await as(owner);const task=(await db.query("insert into tasks(workspace_id,artist_id,title,due_date) values($1,$2,'Artwork','2026-11-01') returning id",[w,artist])).rows[0].id;
+ await db.exec('reset role');
+ await db.exec("create trigger duplicate_event_test after update on public.tasks for each row execute function public.record_artist_date_update()");
+ await as(owner);
+ await db.query("update tasks set due_date='2026-11-02' where id=$1",[task]);
+ assert.equal((await feed()).updates.filter(u=>u.record_id===task).length,1);
+ await db.exec('reset role;drop trigger duplicate_event_test on public.tasks');await as(owner);const changed=(await feed()).updates[0];assert.equal(changed.kind,'task');assert.equal(changed.previous_date,'2026-11-01');assert.equal(changed.new_date,'2026-11-02');
+ const release=(await db.query("insert into releases(workspace_id,artist_id,title,format,release_date) values($1,$2,'Daybreak','Album','2026-12-01') returning id",[w,artist])).rows[0].id;
+ await db.query("update releases set release_date='2026-12-08' where id=$1",[release]);assert.equal((await feed()).updates[0].kind,'release');
+ const n=(await feed()).updates.length;
+ await db.query("update releases set release_date='2026-12-08' where id=$1",[release]);assert.equal((await feed()).updates.length,n);await db.exec('begin');await db.query("update tasks set due_date='2026-11-03' where id=$1",[task]);await db.exec('rollback');assert.equal((await feed()).updates.length,n);
+ await db.query('select assign_artist_access($1,$2,$3,false)',[w,artist,alex]);await as(alex);await assert.rejects(feed());await assert.rejects(post());assert.equal((await db.query('select * from artist_updates')).rows.length,0);
+ await as(owner);await db.query('select assign_artist_access($1,$2,$3,true)',[w,artist,other]);await as(other);assert.equal((await feed()).updates.length,n);
+ const w2=(await db.query("select save_workspace_onboarding('Other','Artist Manager','','1–2','Other company',true) id")).rows[0].id;
+ await assert.rejects(db.query('select artist_conversation($1,$2)',[w2,artist]));
+ const concurrent=await Promise.all(Array.from({length:8},(_,i)=>post(uuid(),[],`Concurrent ${i}`)));
+ assert.equal(new Set(concurrent.map(r=>r.rows[0].id)).size,8);
+ const retryKey=uuid();const retries=await Promise.all([post(retryKey,[],'Retry'),post(retryKey,[],'Retry')]);assert.equal(retries[0].rows[0].id,retries[1].rows[0].id);
+ for(let i=0;i<52;i++)await post(uuid(),[],`Page ${i}`);
+ const page=(await feed()).updates;assert.equal(page.length,50);
+ const older=(await db.query('select artist_conversation($1,$2,$3) f',[w,artist,page.at(-1).id])).rows[0].f.updates;
+ assert.ok(older.length>0);assert.ok(older.every(u=>u.id<page.at(-1).id));
+ await assert.rejects(db.query("insert into artist_updates(workspace_id,artist_id,kind,body) values($1,$2,'message','forged')",[w,artist]));
+ }finally{await db.close();}
+});

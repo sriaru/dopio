@@ -1,0 +1,90 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import ts from 'typescript';
+import {readFile,readdir} from 'node:fs/promises';
+import {randomUUID as uuid} from 'node:crypto';
+import {PGlite} from '@electric-sql/pglite';
+const code=ts.transpileModule(await readFile('lib/coordination/model.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2022}}).outputText;
+const model=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+test('classification is grounded, ambiguity blocks actions, deadlines and files require evidence',()=>{
+ const source={id:'m1',thread:'t1',messageId:'<test@example.com>',sender:'producer@example.com',subject:'After Hours master',body:'The master will arrive November 23, 2026.',received:'2026-11-10T10:00:00Z',attachments:[{id:'a1',filename:'final.wav',mime:'audio/wav',size:1024}]};
+ const context=[{id:'p1',title:'After Hours',artist:'Maya Chen',release_date:'2026-11-20',deliverables:[{id:'d1',title:'Final master',due_date:'2026-11-13',extensions:['wav'],status:'outstanding'}]}];
+ const finding={project_id:'p1',deliverable_id:'d1',confidence:.98,kind:'delay',promised_date:'2026-11-23',evidence:source.body,summary:'Master delayed',consequence:'Submission at risk',severity:'high',steps:['Request expedited delivery'],draft:'Could you deliver sooner?',attachment_ids:[]};
+ assert.equal(model.validateFinding(finding,source,context).kind,'delay');
+ assert.equal(model.validateFinding({...finding,confidence:.5},source,context).kind,'ambiguous');
+ assert.equal(model.validateFinding({...finding,project_id:'foreign'},source,context).project_id,null);
+ assert.throws(()=>model.validateFinding({...finding,evidence:'Invented quote'},source,context));
+ assert.throws(()=>model.validateFinding({...finding,attachment_ids:['foreign']},source,context));
+ assert.throws(()=>model.validateFinding({...finding,promised_date:'2026-02-30'},source,context));
+ assert.equal(model.deadlineConflict('2026-11-13',finding.promised_date),true);
+ assert.equal(model.deadlineConflict(null,finding.promised_date),false);
+ assert.equal(model.attachmentMatches(source.attachments[0],['wav']),true);
+ for(const file of [{...source.attachments[0],mime:'application/x-msdownload'},{...source.attachments[0],filename:'../master.wav'},{...source.attachments[0],size:30*1024*1024}])assert.equal(model.attachmentMatches(file,['wav']),false);
+ assert.equal(model.replyMatches(source,{thread_id:'t1',recipient:source.sender,sent_at:'2026-11-09T10:00:00Z'}),true);
+ assert.equal(model.replyMatches(source,{thread_id:'other',recipient:source.sender,sent_at:'2026-11-09T10:00:00Z'}),false);
+ assert.throws(()=>model.normalizeAddress('evil@example.com\r\nBcc: victim@example.com'));
+});
+test('coordination production SQL: isolation, approvals, replay prevention, replies, verification and recovery',async()=>{
+ const db=new PGlite();try{
+ await db.exec("create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth to public;");
+ const owner=uuid(),other=uuid();for(const id of [owner,other])await db.query('insert into auth.users values($1)',[id]);
+ for(const file of (await readdir('supabase/migrations')).filter(f=>f.endsWith('.sql')).sort())await db.exec(await readFile('supabase/migrations/'+file,'utf8'));
+ const as=async id=>db.exec(`reset role;select set_config('request.jwt.claim.sub','${id}',false);set role authenticated;`);
+ await as(owner);const w=(await db.query("select save_workspace_onboarding('Owner','Artist Manager','','1–2','Company',true) id")).rows[0].id;
+ const artist=(await db.query("insert into artists(workspace_id,name) values($1,'Maya Chen') returning record_id",[w])).rows[0].record_id;
+ const release=(await db.query("insert into releases(workspace_id,artist_id,title,release_date) values($1,$2,'After Hours','2026-11-20') returning id",[w,artist])).rows[0].id;
+ const task=(await db.query("insert into tasks(workspace_id,artist_id,release_id,title,due_date) values($1,$2,$3,'Final master','2026-11-13') returning id",[w,artist,release])).rows[0].id;
+ const connection=uuid();await db.query("insert into gmail_connections(workspace_id,user_id,connection_id,email,encrypted_refresh_token,can_send) values($1,$2,$3,'manager@example.com','encrypted-fixture-token-not-real',true)",[w,owner,connection]);
+ const run=(await db.query('select configure_coordination($1,$2,$3,true,24) id',[w,release,['producer@example.com']])).rows[0].id;
+ const deliverable=(await db.query('select id from coordination_deliverables where run_id=$1',[run])).rows[0].id;
+ await db.query('select set_coordination_requirements($1,$2)',[deliverable,['wav']]);
+ await assert.rejects(db.query('select claim_coordination()'));
+ await assert.rejects(db.query("update coordination_deliverables set status='verified' where id=$1",[deliverable]));
+ await as(other);assert.equal((await db.query('select * from coordination_runs')).rows.length,0);await assert.rejects(db.query('select pause_coordination($1)',[run]));
+ await db.exec('reset role;set role service_role');
+ let lease=(await db.query('select * from claim_coordination()')).rows[0].lease;
+ assert.equal((await db.query('select * from claim_coordination()')).rows.length,0);
+ const source={id:'first',thread:'thread',sender:'producer@example.com',messageId:'<source@example.com>',subject:'After Hours master',body:'Final master next week.',received:'2026-10-20T10:00:00Z',attachments:[]};
+ const f={project_id:release,deliverable_id:deliverable,kind:'delay',confidence:.98,promised_date:'2026-11-23',evidence:source.body,summary:'Final master late',consequence:'Distributor deadline at risk',severity:'high',steps:['Request expedited delivery'],draft:'Could you deliver the master by November 13?',verified_candidates:[]};
+ const commit=async(s=source,finding=f)=>db.query('select commit_coordination($1,$2,$3,$4)',[run,lease,s,finding]);
+ await commit();await commit();assert.equal((await db.query('select * from coordination_blockers')).rows.length,1);assert.equal((await db.query('select * from coordination_actions')).rows.length,1);
+ let action=(await db.query('select * from coordination_actions')).rows[0];
+ assert.equal((await db.query('select (claim_coordination_send($1,$2,$3)).id id',[run,lease,action.id])).rows[0].id,null);
+ await as(owner);await db.query('select review_coordination_action($1,$2,$3,true)',[action.id,action.version,'Reviewed exact email']);
+ await assert.rejects(db.query('select review_coordination_action($1,$2,$3,true)',[action.id,action.version,'Changed after approval']));
+ await db.exec('reset role;set role service_role');
+ action=(await db.query('select * from claim_coordination_send($1,$2,$3)',[run,lease,action.id])).rows[0];assert.equal(action.body,'Reviewed exact email');assert.equal(action.status,'sending');
+ assert.equal((await db.query('select (claim_coordination_send($1,$2,$3)).id id',[run,lease,action.id])).rows[0].id,null);
+ // A lost provider response never permits a second send; receipt reconciliation is separate.
+ await db.query('select record_coordination_send($1,$2,null)',[action.id,action.attempt_id]);
+ assert.equal((await db.query('select status from coordination_actions where id=$1',[action.id])).rows[0].status,'unknown');
+ await db.query('select record_coordination_send($1,$2,$3)',[action.id,action.attempt_id,'gmail-message-accepted']);
+ await db.exec('reset role');await db.query("update coordination_actions set sent_at='2026-10-20T11:00:00Z',follow_up_at=now()-interval '1 hour' where id=$1",[action.id]);await db.exec('set role service_role');
+ await db.query('select prepare_coordination_followups($1,$2)',[run,lease]);await db.query('select prepare_coordination_followups($1,$2)',[run,lease]);assert.equal((await db.query('select * from coordination_actions')).rows.length,2);
+ const attachment={id:'file1',filename:'final.wav',mime:'audio/wav',size:1024};
+ await commit({...source,id:'reply',body:'Here is the final master.',received:'2026-10-21T11:00:00Z',attachments:[attachment]},{...f,kind:'received',verified_candidates:[attachment],draft:''});
+ assert.equal((await db.query('select status from coordination_deliverables where id=$1',[deliverable])).rows[0].status,'received');
+ assert.equal((await db.query('select status from coordination_blockers')).rows[0].status,'awaiting_review');
+ assert.equal((await db.query('select status from coordination_actions where id=$1',[action.id])).rows[0].status,'responded');
+ await as(owner);await db.query('select verify_coordination_deliverable($1,true)',[deliverable]);
+ assert.equal((await db.query('select status from coordination_blockers')).rows[0].status,'resolved');
+ assert.equal((await db.query('select status from tasks where id=$1',[task])).rows[0].status,'Pending'); // No false task/technical approval.
+ await db.exec('reset role');await db.query("update coordination_runs set lease_until=now()-interval '1 minute',next_run_at=now()-interval '1 minute' where id=$1",[run]);await db.exec('set role service_role');
+ const recovered=(await db.query('select * from claim_coordination()')).rows[0];assert.notEqual(recovered.lease,lease);lease=recovered.lease;
+ // A newly proposed email must not survive a task edit after approval.
+ await db.exec('reset role');await db.query("update coordination_deliverables set status='outstanding' where id=$1",[deliverable]);await db.exec('set role service_role');
+ await commit({...source,id:'new-delay',received:'2026-10-22T11:00:00Z'});
+ const stale=(await db.query("select * from coordination_actions where status='draft'")).rows[0];
+ await as(owner);await db.query('select review_coordination_action($1,$2,$3,true)',[stale.id,stale.version,stale.body]);
+ await db.query("update tasks set title='Final master revision' where id=$1",[task]);
+ await db.exec('reset role;set role service_role');
+ assert.equal((await db.query('select (claim_coordination_send($1,$2,$3)).id id',[run,lease,stale.id])).rows[0].id,null);
+ await db.query('select prepare_coordination_followups($1,$2)',[run,lease]);
+ assert.equal((await db.query('select status from coordination_actions where id=$1',[stale.id])).rows[0].status,'cancelled');
+ // Current role is checked even with a previously issued worker lease.
+ await db.exec('reset role');await db.query("update workspace_members set role='viewer' where workspace_id=$1 and user_id=$2",[w,owner]);await db.exec('set role service_role');
+ await assert.rejects(commit({...source,id:'after-revocation'}));
+ await db.exec('reset role');await db.query("update workspace_members set role='owner' where workspace_id=$1 and user_id=$2",[w,owner]);
+ await as(owner);await db.query('select pause_coordination($1)',[run]);await db.exec('reset role;set role service_role');await assert.rejects(commit({...source,id:'afterpause'}));
+ }finally{await db.close();}
+});

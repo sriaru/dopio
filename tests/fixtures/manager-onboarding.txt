@@ -1,0 +1,210 @@
+
+Dopio — MANAGER ONBOARDING BRIEF
+
+MANAGER / WORKSPACE
+Manager name: Alex Morgan
+Workspace name: Northline Management
+General working preferences: Weekly artist progress summaries.
+Track deadlines and outstanding follow-ups. Require approval
+before external emails, contracts, or spending.
+
+ARTIST
+Artist name: MAYA (Maya Bennett)
+Genre: Indie Pop / Alternative R&B
+Background / location: Independent singer-songwriter based in
+Los Angeles, CA. Approximately 45,000 monthly Spotify listeners.
+Current priorities: After Hours EP release, organic TikTok growth,
+press and promotion.
+Team contacts (name, role, email):
+Jordan Lee, Producer, jordan@example.com
+Sophie Chen, Graphic Designer, sophie@example.com
+Daniel Brooks, PR Consultant, daniel@example.com
+Creative preferences: Maya approves promotional visuals.
+No interviews before 11 AM PST.
+Decisions requiring manager approval: Emails, contracts, spending.
+Additional context / uncertainties: Campaign budget approximately
+$3,000. Cover artwork is delayed; Sophie has not responded.
+
+PROJECT
+Project title: After Hours EP
+Type (Single / EP / Album, or describe another kind of project): EP
+Current stage: Pre-release
+Confirmed release date:
+Unconfirmed date or timing notes: Target EP release 2026-11-20.
+Lead single Slow Motion targeted for 2026-10-30.
+Outstanding tasks (repeat as needed):
+- Task: Finalize EP cover artwork
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-10-14
+  Responsible person: Sophie Chen
+  Current status: Delayed
+- Task: Approve final masters for five tracks
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-10-16
+  Responsible person: Maya Bennett
+  Current status: Pending
+- Task: Submit Slow Motion for distribution
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-10-18
+  Responsible person:
+  Current status: Pending
+- Task: Prepare Spotify editorial pitch
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-10-20
+  Responsible person:
+  Current status: Pending
+- Task: Coordinate press outreach
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-10-23
+  Responsible person: Daniel Brooks
+  Current status: Pending
+- Task: Schedule promotional TikTok content
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-10-25
+  Responsible person:
+  Current status: Pending
+- Task: Confirm EP release-day promotional plan
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-11-10
+  Responsible person:
+  Current status: Pending
+Extra project context: Five-track EP via DistroKid.
+Artwork is delayed.
+
+END ARTIST
+
+ARTIST
+Artist name: RIVER (River James)
+Genre: Indie Folk / Alternative
+Background / location: Independent Austin, TX artist with
+a following built through live performances in Texas.
+Current priorities: Texas Fall Tour, booking venues,
+coordinating musicians and logistics.
+Team contacts (name, role, email):
+Chris Walker, Booking Agent, chris@example.com
+Emma Davis, Tour Coordinator, emma@example.com
+Taylor Reed, Photographer, taylor@example.com
+Creative preferences: Weekend performances; venues
+with capacities between 150 and 400.
+Decisions requiring manager approval: Booking contracts,
+external emails, spending.
+Additional context / uncertainties: Minimum guarantee target
+$750 per show. Dallas venue interested but unconfirmed.
+Houston contract received but not yet reviewed.
+
+PROJECT
+Project title: Texas Fall Tour
+Type (Single / EP / Album, or describe another kind of project):
+Live Tour
+Current stage: Planning / Booking
+Confirmed release date:
+Unconfirmed date or timing notes: Tentative tour window
+2026-11-05 through 2026-11-22. Target cities Austin,
+Dallas, Houston, San Antonio.
+Outstanding tasks (repeat as needed):
+- Task: Follow up with Dallas venue
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-10-10
+  Responsible person: Chris Walker
+  Current status: Awaiting confirmation
+- Task: Confirm Houston show contract
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-10-12
+  Responsible person: Chris Walker
+  Current status: Contract received; review pending
+- Task: Finalize touring musicians
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-10-15
+  Responsible person:
+  Current status: Pending
+- Task: Request updated technical rider
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-10-17
+  Responsible person: Emma Davis
+  Current status: Pending
+- Task: Coordinate tour poster design
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-10-19
+  Responsible person:
+  Current status: Pending
+- Task: Announce confirmed tour dates
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-10-23
+  Responsible person:
+  Current status: Pending
+- Task: Arrange transportation and accommodations
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-10-28
+  Responsible person: Emma Davis
+  Current status: Pending
+Extra project context: Tentative shows should not be
+treated as confirmed bookings.
+
+END ARTIST
+
+ARTIST
+Artist name: NOAH C (Noah Carter)
+Genre: Hip-Hop / Alternative Rap
+Background / location: Emerging independent rapper based
+in New York, NY. Recently gained traction on short-form video.
+Current priorities: No Signal single, music video,
+potential brand partnerships.
+Team contacts (name, role, email):
+Marcus Hill, Producer, marcus@example.com
+Olivia Park, Video Director, olivia@example.com
+Rachel Kim, Brand Partnerships, rachel@example.com
+Creative preferences: Visually distinctive music videos.
+Fashion and lifestyle brand collaborations.
+Decisions requiring manager approval: Brand partnerships,
+contracts, external emails, spending.
+Additional context / uncertainties: Music video budget cap
+$2,500. Possible streetwear partnership, but no formal offer.
+
+PROJECT
+Project title: No Signal
+Type (Single / EP / Album, or describe another kind of project):
+Single
+Current stage: Production
+Confirmed release date:
+Unconfirmed date or timing notes: Target 2026-12-04
+Outstanding tasks (repeat as needed):
+- Task: Confirm final vocal recording session
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-10-13
+  Responsible person: Marcus Hill
+  Current status: Pending
+- Task: Receive updated mix from engineer
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-10-19
+  Responsible person:
+  Current status: Awaiting mix
+- Task: Review music video treatment
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-10-22
+  Responsible person: Olivia Park
+  Current status: Pending review
+- Task: Finalize video production budget
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-10-26
+  Responsible person:
+  Current status: Approval not confirmed
+- Task: Book music video shoot
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-11-02
+  Responsible person: Olivia Park
+  Current status: Pending
+- Task: Deliver final master and artwork
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-11-12
+  Responsible person:
+  Current status: Pending
+- Task: Submit single for distribution
+  Confirmed deadline:
+  Unconfirmed deadline wording: Target 2026-11-15
+  Responsible person:
+  Current status: Pending
+Extra project context: Music video concept is being developed.
+Streetwear partnership is not a confirmed agreement.
+
+END ARTIST
+  

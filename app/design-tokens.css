@@ -1,0 +1,40 @@
+/* DOPIO semantic palette. Use text roles rather than page-specific hex colors.
+   Body/status/accent text is designed for white and the subtle surfaces below. */
+:root {
+  --text-primary: #171923;
+  --text-secondary: #606a7c;
+  --text-tertiary: #727b8c;
+  --text-disabled: #98a2b3;
+  --text-inverse: #ffffff;
+  --text-on-dark: #e4e7ec;
+  --text-muted-on-dark: #b8c0cf;
+  --accent: #6542cf;
+  --accent-hover: #5131b0;
+  --accent-soft: #f2edfc;
+  --accent-on-dark: #c6b5ff;
+  --focus-ring: #7754d6;
+  --status-danger: #b42318;
+  --status-warning: #934400;
+  --status-success: #176b45;
+  --status-info: #175cd3;
+  --status-danger-soft: #fff0f0;
+  --status-warning-soft: #fff4e5;
+  --status-success-soft: #edf8f1;
+  --status-info-soft: #eff5ff;
+  --surface: #ffffff;
+  --surface-subtle: #f8f9fb;
+  --surface-canvas: #f5f6f8;
+  --border: #e4e7ec;
+  --border-control: #c5cbd5;
+  --font-body: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  /* Compatibility aliases used by existing shared components. */
+  --foreground: var(--text-primary);
+  --text: var(--text-primary);
+  --muted: var(--text-secondary);
+  --purple: var(--accent);
+  --line: var(--border);
+  --surface-ink: var(--text-primary);
+  --surface-copy: var(--text-secondary);
+  --surface-border: var(--border);
+  --surface-tint: var(--surface-subtle);
+}

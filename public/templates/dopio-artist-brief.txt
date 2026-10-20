@@ -1,0 +1,41 @@
+Dopio — MANAGER ONBOARDING BRIEF
+
+Include only artists you manage. Repeat the ARTIST section for each artist
+and the PROJECT section for each existing project. Leave unknowns blank.
+Use full dates with a year (YYYY-MM-DD) when confirmed.
+Dopio will show proposals for approval before saving anything.
+
+MANAGER / WORKSPACE
+Manager name:
+Workspace name:
+General working preferences:
+
+ARTIST
+Artist name:
+Genre:
+Background / location:
+Current priorities:
+Team contacts (name, role, email):
+Creative preferences:
+Decisions requiring manager approval:
+Additional context / uncertainties:
+
+PROJECT (repeat for every existing project)
+Project title:
+Type (Single / EP / Album, or describe another kind of project):
+Current stage:
+Confirmed release date:
+Unconfirmed date or timing notes:
+Outstanding tasks (repeat as needed):
+- Task:
+  Confirmed deadline:
+  Unconfirmed deadline wording:
+  Responsible person:
+  Current status:
+Extra project context:
+
+END ARTIST
+
+Copy the ARTIST and PROJECT sections to add more.
+Other project types, contacts, owners, and status details are kept in the
+artist brief for follow-up; review which releases and tasks will be created.

@@ -1,19 +1,33 @@
 {
-  "name": "aura",
+  "name": "dopio",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:pilot": "npm run check:pilot && next build --webpack",
+    "check:pilot": "node scripts/check-pilot-env.mjs",
+    "smoke:pilot": "node scripts/smoke-pilot.mjs",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --test tests/*.test.mjs",
+    "test:auth": "node --test tests/auth-redirect.test.mjs tests/workspace-auth.test.mjs",
+    "test:workspace": "node --test tests/workspace-records.test.mjs tests/workspace-validation.test.mjs",
+    "test:email": "node --test tests/email-workflow.test.mjs tests/ai-email.test.mjs",
+    "test:gmail": "node --test tests/gmail.test.mjs tests/gmail-database.test.mjs",
+    "test:calendar": "node --test tests/calendar.test.mjs",
+    "test:contacts": "node --test tests/contacts.test.mjs",
+    "test:plans": "node --test tests/chat-plan.test.mjs tests/release-revisions.test.mjs"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.116.0",
     "next": "16.3.5",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

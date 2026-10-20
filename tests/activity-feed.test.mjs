@@ -1,0 +1,10 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import ts from 'typescript';
+const js=ts.transpile(readFileSync(new URL('../lib/workspace/activity-feed.ts',import.meta.url),'utf8'),{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022});
+const {buildActivityFeed,describeActivity}=await import('data:text/javascript;base64,'+Buffer.from(js).toString('base64'));
+const event={id:'a',entity_id:'t',entity_type:'task',actor_id:'me',action:'updated',title:'Artwork',created_at:'2026-10-19T12:00:00Z',previous_data:{due_date:'2026-10-22'},current_data:{due_date:'2026-10-26'}};
+test('activity describes saved dates and completion without inferring AI',()=>{assert.match(describeActivity(event,'You'),/October 22, 2026 to October 26, 2026/);assert.equal(buildActivityFeed([event],[],'me')[0].category,'Me');assert.match(describeActivity({...event,previous_data:{status:'Pending'},current_data:{status:'Complete'}},'You'),/completed/);});
+test('assistant receipts match exact actor, record and transaction timestamp and do not duplicate events',()=>{const receipt={request_id:'r',user_id:'me',record_kind:'task',record_id:'t',created_at:event.created_at,payload:{kind:'update_task',title:'Artwork'}};const feed=buildActivityFeed([event],[receipt],'me');assert.equal(feed.length,1);assert.equal(feed[0].category,'DOPIO AI');assert.equal(buildActivityFeed([event],[{...receipt,created_at:'2026-10-18T12:00:00Z'}],'me').find(a=>a.id==='a').category,'Me');});
+test('team and administrative actions retain their actual attribution',()=>{assert.equal(buildActivityFeed([{...event,actor_id:'other'}],[],'me')[0].category,'My Team');assert.equal(buildActivityFeed([{...event,actor_id:null}],[],'me')[0].category,'System');});

@@ -1,0 +1,57 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile,readdir} from 'node:fs/promises';
+import {randomUUID as uuid} from 'node:crypto';
+import {PGlite} from '@electric-sql/pglite';
+test('team receipts, source authorization and existing approval execution remain durable and isolated',async()=>{
+ const db=new PGlite();try{
+ const owner=uuid(),manager=uuid(),stranger=uuid();
+ await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth to public;`);
+ for(const id of [owner,manager,stranger])await db.query('insert into auth.users values($1)',[id]);
+ for(const f of (await readdir('supabase/migrations')).filter(f=>f.endsWith('.sql')).sort())await db.exec(await readFile('supabase/migrations/'+f,'utf8'));
+ const as=async id=>db.exec(`reset role;select set_config('request.jwt.claim.sub','${id}',false);set role authenticated;`);
+ await as(owner);const w=(await db.query("select save_workspace_onboarding('Owner','Artist Manager','','1–2','Company',true) id")).rows[0].id;
+ const artist=(await db.query("insert into artists(workspace_id,name) values($1,'Daniel') returning record_id",[w])).rows[0].record_id;
+ const other=(await db.query("insert into artists(workspace_id,name) values($1,'Maya') returning record_id",[w])).rows[0].record_id;
+ await db.exec('reset role');await db.query("insert into workspace_members(workspace_id,user_id,role) values($1,$2,'manager')",[w,manager]);
+ await as(owner);await db.query('select assign_artist_access($1,$2,$3,true)',[w,artist,manager]);
+ const t=(await db.query("insert into tasks(workspace_id,artist_id,title,due_date) values($1,$2,'Artwork','2026-10-15') returning id,version",[w,artist])).rows[0];
+ const message=(await db.query('select post_artist_update($1,$2,$3,$4,$5) id',[w,artist,uuid(),'Move Artwork to Friday. <script>alert(1)</script>',[]])).rows[0].id;
+ await as(manager);
+ const feed=async()=>(await db.query('select artist_conversation($1,$2) f',[w,artist])).rows[0].f;
+ assert.ok((await feed()).unread_ids.includes(message));
+ const overview=(await db.query('select artist_team_overview($1) f',[w])).rows[0].f;assert.equal(overview.length,1);assert.ok(overview[0].unread>0);
+ const unread=(await db.query('select artist_ai_messages($1,$2,true) f',[w,artist])).rows[0].f;assert.ok(unread.some(m=>m.id===message));
+ await db.query('select mark_artist_messages_read($1,$2,$3)',[w,artist,[message]]);
+ assert.ok(!(await feed()).unread_ids.includes(message));
+ await db.query('select mark_artist_messages_read($1,$2,$3)',[w,artist,[message]]);
+ assert.equal((await db.query('select * from artist_update_reads where update_id=$1',[message])).rows.length,1);
+ // A lower ID becoming visible later must still count as unread.
+ await db.exec("reset role;select set_config('request.jwt.claim.sub','',false)");
+ const reserved=(await db.query("select nextval(pg_get_serial_sequence('public.artist_updates','id')) id")).rows[0].id;
+ await as(owner);const newer=(await db.query('select post_artist_update($1,$2,$3,$4,$5) id',[w,artist,uuid(),'Newer',[]])).rows[0].id;
+ await as(manager);await db.query('select mark_artist_messages_read($1,$2,$3)',[w,artist,[newer]]);
+ await db.exec("reset role;select set_config('request.jwt.claim.sub','',false)");
+ await db.query("insert into artist_updates(id,workspace_id,artist_id,actor_id,kind,body) overriding system value values($1,$2,$3,$4,'message','Late commit')",[reserved,w,artist,owner]);
+ await as(manager);assert.ok((await feed()).unread_ids.includes(reserved));
+ const review=async(date='2026-10-20',version=t.version)=>(await db.query('select review_artist_message($1,$2,$3,$4,$5,$6,$7,$8) id',[w,artist,message,'task',t.id,version,date,'Move Artwork to Friday.'])).rows[0].id;
+ await assert.rejects(db.query('select review_artist_message($1,$2,$3,$4,$5,$6,$7,$8)',[w,other,message,'task',t.id,t.version,'2026-10-20','Move Artwork to Friday.']));
+ const proposal=await review();assert.equal(await review(),proposal);
+ assert.equal((await db.query('select due_date::text d from tasks where id=$1',[t.id])).rows[0].d,'2026-10-15');
+ const approvalEventCount=(await feed()).updates.filter(m=>m.kind==='approval').length;assert.equal(approvalEventCount,1);
+ await db.query('select decide_deadline_proposal($1,true)',[proposal]);await db.query('select decide_deadline_proposal($1,true)',[proposal]);
+ assert.equal((await db.query('select due_date::text d from tasks where id=$1',[t.id])).rows[0].d,'2026-10-20');
+ assert.equal((await feed()).updates.filter(m=>m.kind==='task').length,1);
+ const current=(await db.query('select version from tasks where id=$1',[t.id])).rows[0].version;
+ const rejected=await review('2026-10-21',current);await db.query('select decide_deadline_proposal($1,false)',[rejected]);
+ assert.equal((await db.query('select due_date::text d from tasks where id=$1',[t.id])).rows[0].d,'2026-10-20');
+ const stale=await review('2026-10-22',current);await db.query("update tasks set title='New title' where id=$1",[t.id]);
+ assert.equal((await db.query('select decide_deadline_proposal($1,true) s',[stale])).rows[0].s,'conflict');
+ const release=(await db.query("insert into releases(workspace_id,artist_id,title,release_date) values($1,$2,'Daybreak','2026-12-01') returning id,version",[w,artist])).rows[0];
+ const rp=(await db.query('select review_artist_message($1,$2,$3,$4,$5,$6,$7,$8) id',[w,artist,message,'release',release.id,release.version,'2026-12-08','Move Artwork to Friday.'])).rows[0].id;
+ await db.query('select decide_email_release($1,$2,true)',[w,rp]);assert.equal((await feed()).updates.filter(m=>m.kind==='release').length,1);
+ await as(owner);await db.query('select assign_artist_access($1,$2,$3,false)',[w,artist,manager]);
+ await as(manager);await assert.rejects(feed());await assert.rejects(db.query('select artist_ai_messages($1,$2,false)',[w,artist]));assert.equal((await db.query('select * from inbox_messages where source=\'team\'')).rows.length,0);await assert.rejects(db.query('select decide_deadline_proposal($1,true)',[proposal]));
+ await as(stranger);assert.deepEqual((await db.query('select artist_team_overview($1) f',[w])).rows[0].f,[]);await assert.rejects(db.query('select mark_artist_messages_read($1,$2,$3)',[w,artist,[message]]));
+ }finally{await db.close();}
+});

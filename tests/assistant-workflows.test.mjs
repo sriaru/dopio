@@ -1,0 +1,56 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile,readdir} from 'node:fs/promises';
+import {randomUUID as uuid} from 'node:crypto';
+import {PGlite} from '@electric-sql/pglite';
+test('assistant task execution and history enforce access, stale state, retries and atomic receipts',async()=>{
+ const db=new PGlite();try{
+ const owner=uuid(),manager=uuid(),other=uuid();
+ await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth to public;`);
+ for(const id of [owner,manager,other])await db.query('insert into auth.users values($1)',[id]);
+ for(const f of (await readdir('supabase/migrations')).filter(f=>f.endsWith('.sql')).sort())await db.exec(await readFile('supabase/migrations/'+f,'utf8'));
+ const as=async id=>db.exec(`reset role;select set_config('request.jwt.claim.sub','${id}',false);set role authenticated;`);
+ await as(owner);const w=(await db.query("select save_workspace_onboarding('Owner','Artist Manager','','1–2','Company',true) id")).rows[0].id;
+ const artist=(await db.query("insert into artists(workspace_id,name) values($1,'Daniel') returning record_id",[w])).rows[0].record_id;
+ const release=(await db.query("insert into releases(workspace_id,artist_id,title,format,release_date) values($1,$2,'Daybreak','Album','2026-12-01') returning id",[w,artist])).rows[0].id;
+ await db.exec('reset role');await db.query("insert into workspace_members(workspace_id,user_id,role) values($1,$2,'manager')",[w,manager]);
+ await as(owner);await db.query('select assign_artist_access($1,$2,$3,true)',[w,artist,manager]);await as(manager);
+ const p={kind:'create_task',artist_id:artist,release_id:release,title:'Artwork',date:'2026-11-01',status:'Pending',notes:'',artist_version:1,release_version:1},request=uuid();
+ const execute=async(r,payload,workspace=w)=>(await db.query('select execute_assistant_task($1,$2,$3) id',[workspace,r,payload])).rows[0].id;
+ const id=await execute(request,p);assert.equal(await execute(request,p),id);
+ await assert.rejects(execute(request,{...p,title:'Changed request'}));
+ const before=(await db.query('select version from tasks where id=$1',[id])).rows[0].version;
+ const edit={...p,kind:'update_task',target_id:id,version:before,date:'2026-11-02'};
+ await execute(uuid(),edit);await assert.rejects(execute(uuid(),edit));
+ const updated=(await db.query('select due_date::text d,version from tasks where id=$1',[id])).rows[0];assert.equal(updated.d,'2026-11-02');
+ await assert.rejects(execute(uuid(),{...edit,version:updated.version,date:'2026-12-02'}));
+ // A receipt failure rolls the task write and its activity/team triggers back.
+ await db.exec("reset role;create function public.fail_assistant_receipt() returns trigger language plpgsql as $$begin raise exception 'Simulated receipt failure';end$$;create trigger fail_receipt before insert on assistant_action_receipts for each row execute function fail_assistant_receipt();");
+ await as(manager);await assert.rejects(execute(uuid(),{...edit,version:updated.version,title:'Must roll back'}));
+ assert.equal((await db.query('select title from tasks where id=$1',[id])).rows[0].title,'Artwork');
+ await db.exec('reset role;drop trigger fail_receipt on assistant_action_receipts');await as(manager);
+ const record=async(request,payload)=>(await db.query('select execute_assistant_record($1,$2,$3) id',[w,request,payload])).rows[0].id;
+ await as(owner);
+ const createArtist={kind:'create_artist',target_id:null,title:'New artist'};const ar=uuid();const created=await record(ar,createArtist);assert.equal(await record(ar,createArtist),created);await db.query('select assign_artist_access($1,$2,$3,true)',[w,created,manager]);await as(manager);await assert.rejects(record(uuid(),{kind:'create_artist',target_id:null,title:'Not authorized'}));
+ const av=(await db.query('select version from artists where record_id=$1',[created])).rows[0].version;
+ await record(uuid(),{kind:'update_artist',target_id:created,version:av,title:'Renamed artist',status:'On Hold'});
+ await assert.rejects(record(uuid(),{kind:'update_artist',target_id:created,version:av,title:'Stale',status:'Active'}));
+ const briefRequest=uuid(),brief={kind:'update_brief',target_id:created,version:0,notes:'Reviewed release context'};
+ await record(briefRequest,brief);await record(briefRequest,brief);assert.equal((await db.query('select version from artist_briefs where artist_id=$1',[created])).rows[0].version,1);
+ const rv=(await db.query('select version from releases where id=$1',[release])).rows[0].version;
+ await record(uuid(),{kind:'update_project_notes',target_id:release,version:rv,notes:'Reviewed project note'});
+ assert.equal((await db.query('select notes from releases where id=$1',[release])).rows[0].notes,'Reviewed project note');
+ const conversation=uuid();const save=async(v,m)=>(await db.query('select save_assistant_conversation($1,$2,$3,$4,$5,$6) v',[w,conversation,v,'Release review',m,[artist]])).rows[0].v;
+ const messages=[{role:'user',content:'Review Artwork'}];assert.equal(await save(0,messages),1);assert.equal(await save(0,messages),1);
+ await assert.rejects(save(0,[...messages,{role:'assistant',content:'New'}]));
+ await db.exec('reset role');await db.query("update workspace_members set role='viewer' where workspace_id=$1 and user_id=$2",[w,manager]);await as(manager);
+ await assert.rejects(execute(uuid(),p));assert.equal((await db.query('select * from assistant_conversations')).rows.length,0);
+ await db.exec('reset role');await db.query("update workspace_members set role='manager' where workspace_id=$1 and user_id=$2",[w,manager]);
+ await as(owner);assert.equal((await db.query('select * from assistant_conversations')).rows.length,0);
+ await as(other);const foreign=(await db.query("select save_workspace_onboarding('Other','Artist Manager','','1–2','Other',true) id")).rows[0].id;
+ await assert.rejects(execute(uuid(),p));await assert.rejects(execute(uuid(),p,foreign));
+ assert.equal((await db.query('select * from assistant_conversations')).rows.length,0);
+ await as(owner);await db.query('select assign_artist_access($1,$2,$3,false)',[w,artist,manager]);await as(manager);
+ assert.equal((await db.query('select * from assistant_conversations')).rows.length,0);await assert.rejects(save(1,messages));await assert.rejects(execute(request,p));
+ }finally{await db.close();}
+});
