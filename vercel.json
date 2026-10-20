@@ -1,11 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "npm run build:pilot",
-  "crons": [
-    {
-      "path": "/api/coordination/tick",
-      "schedule": "* * * * *"
-    }
-  ]
+  "buildCommand": "npm run build:pilot"
 }
